@@ -27,5 +27,10 @@
         <module name="wsrest-test" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="wsrest-client" target="1.7" />
+      <module name="wsrest-server" target="1.7" />
+      <module name="wsrest-test" target="1.7" />
+    </bytecodeTargetLevel>
   </component>
 </project>
