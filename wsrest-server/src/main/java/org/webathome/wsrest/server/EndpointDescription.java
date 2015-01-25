@@ -51,6 +51,10 @@ class EndpointDescription {
             throw new WsRestException("Missing Path annotation on " + klass.getSimpleName());
         }
 
+        if (!path.endsWith("/")) {
+            path += "/";
+        }
+
         this.path = path;
 
         for (Method method : klass.getMethods()) {

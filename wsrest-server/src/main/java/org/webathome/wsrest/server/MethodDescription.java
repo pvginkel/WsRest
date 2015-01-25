@@ -56,6 +56,10 @@ class MethodDescription {
         // This is handled upstream.
         assert path != null;
 
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+
         this.produces = parseParameterEncoding(produces);
         this.consumes = parseParameterEncoding(consumes);
         this.type = type;
