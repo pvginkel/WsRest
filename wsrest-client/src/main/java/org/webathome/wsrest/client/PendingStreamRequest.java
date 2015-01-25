@@ -1,10 +1,14 @@
 package org.webathome.wsrest.client;
 
+import java.util.ArrayList;
+import java.util.List;
+
 class PendingStreamRequest implements PendingRequest {
     private final Callback<Stream> callback;
     private final Connection connection;
     private StreamImpl stream;
     private long id;
+    private List<String> queue;
 
     public PendingStreamRequest(Callback<Stream> callback, Connection connection) {
         if (callback == null) {
@@ -39,6 +43,14 @@ class PendingStreamRequest implements PendingRequest {
 
                 createStream(id);
 
+                if (queue != null) {
+                    for (String message : queue) {
+                        stream.onMessage(message);
+                    }
+
+                    queue = null;
+                }
+
                 return StreamState.PENDING;
 
             case CLOSE:
@@ -51,7 +63,14 @@ class PendingStreamRequest implements PendingRequest {
                 return StreamState.CLOSED;
 
             case MESSAGE:
-                stream.onMessage(body);
+                if (stream == null) {
+                    if (queue == null) {
+                        queue = new ArrayList<>();
+                    }
+                    queue.add(body);
+                } else {
+                    stream.onMessage(body);
+                }
 
                 return StreamState.PENDING;
 
