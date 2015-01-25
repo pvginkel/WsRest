@@ -17,6 +17,7 @@ public class WsEndpoint extends AbstractWsEndpoint {
             return new WsRestContext.Builder()
                 .addService(EchoApi.class)
                 .addService(SerializationApi.class)
+                .addService(StreamApi.class)
                 .build();
         } catch (WsRestException e) {
             throw new IllegalStateException(e);

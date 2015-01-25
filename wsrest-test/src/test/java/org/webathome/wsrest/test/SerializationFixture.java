@@ -4,7 +4,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.webathome.wsrest.client.WsRestException;
-import org.webathome.wsrest.client.WsRestMethod;
+import org.webathome.wsrest.client.RequestType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -94,7 +94,8 @@ public class SerializationFixture extends FixtureBase {
 
         assertEquals(
             1 + 2 + 3,
-            (int)openConnection().newRequest(WsRestMethod.GET, "/serialization/echo-int-array")
+            (int)openConnection()
+                .newRequest("/serialization/echo-int-array", RequestType.GET)
                 .addQueryParam("value", new int[]{1, 2, 3})
                 .getResponse(Integer.class)
         );
@@ -104,7 +105,8 @@ public class SerializationFixture extends FixtureBase {
     public void echoNull() throws WsRestException {
         assertEquals(
             null,
-            openConnection().newRequest(WsRestMethod.GET, "/serialization/echo-nullable-int")
+            openConnection()
+                .newRequest("/serialization/echo-nullable-int", RequestType.GET)
                 .addQueryParam("value", null)
                 .getResponse(Integer.class)
         );
@@ -114,7 +116,8 @@ public class SerializationFixture extends FixtureBase {
     public void echoDefaultInt() throws WsRestException {
         assertEquals(
             0,
-            (int)openConnection().newRequest(WsRestMethod.GET, "/serialization/echo-int")
+            (int)openConnection()
+                .newRequest("/serialization/echo-int", RequestType.GET)
                 .getResponse(Integer.class)
         );
     }
@@ -123,7 +126,8 @@ public class SerializationFixture extends FixtureBase {
     public void echoMultiple() throws WsRestException {
         assertEquals(
             (long)(42 + 84 + 168),
-            (long)openConnection().newRequest(WsRestMethod.GET, "/serialization/echo-multiple")
+            (long)openConnection()
+                .newRequest("/serialization/echo-multiple", RequestType.GET)
                 .addQueryParam("a", 42)
                 .addQueryParam("b", 84)
                 .addQueryParam("c", 168)
@@ -139,9 +143,10 @@ public class SerializationFixture extends FixtureBase {
 
         assertEquals(
             testObject,
-            openConnection().newRequest(WsRestMethod.GET, "/serialization/echo-object")
+            openConnection()
+                .newRequest("/serialization/echo-object", RequestType.GET)
                 .setJsonBody(testObject)
-                .getJsonResponse(TestObject.class)
+                .getJson(TestObject.class)
         );
     }
 
@@ -157,9 +162,10 @@ public class SerializationFixture extends FixtureBase {
 
         assertArrayEquals(
             array,
-            (TestObject[])openConnection().newRequest(WsRestMethod.GET, "/serialization/echo-array")
+            (TestObject[])openConnection()
+                .newRequest("/serialization/echo-array", RequestType.GET)
                 .setJsonBody(array)
-                .getJsonResponse(TestObject[].class)
+                .getJson(TestObject[].class)
         );
     }
 
@@ -177,16 +183,18 @@ public class SerializationFixture extends FixtureBase {
 
         assertEquals(
             list,
-            openConnection().newRequest(WsRestMethod.GET, "/serialization/echo-list")
+            openConnection()
+                .newRequest("/serialization/echo-list", RequestType.GET)
                 .setJsonBody(list)
-                .getJsonResponse(TestObject.LIST_TYPE)
+                .getJson(TestObject.LIST_TYPE)
         );
     }
 
     private void test(String method, Object value) throws WsRestException {
         assertEquals(
             value,
-            openConnection().newRequest(WsRestMethod.GET, "/serialization/echo-" + method)
+            openConnection()
+                .newRequest("/serialization/echo-" + method, RequestType.GET)
                 .addQueryParam("value", value)
                 .getResponse(value.getClass())
         );

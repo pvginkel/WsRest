@@ -2,7 +2,7 @@ package org.webathome.wsrest.client;
 
 import java.util.*;
 
-public class WsRestConnection {
+public class Connection {
     private static final long DEFAULT_LONGER = 60 * 1000;
 
     private final Object syncRoot = new Object();
@@ -11,15 +11,15 @@ public class WsRestConnection {
     private final WebSocketFactory webSocketFactory;
     private long nextId = 1;
     private WebSocket webSocket;
-    private final Map<Long, Callback<String>> pendingRequests = new HashMap<>();
+    private final Map<Long, PendingRequest> pendingRequests = new HashMap<>();
     private Timer timer;
     private boolean closed;
 
-    public WsRestConnection(String url, WebSocketFactory webSocketFactory) {
+    public Connection(String url, WebSocketFactory webSocketFactory) {
         this(url, DEFAULT_LONGER, webSocketFactory);
     }
 
-    public WsRestConnection(String url, long linger, WebSocketFactory webSocketFactory) {
+    public Connection(String url, long linger, WebSocketFactory webSocketFactory) {
         if (url == null) {
             throw new IllegalArgumentException("url");
         }
@@ -32,8 +32,12 @@ public class WsRestConnection {
         this.webSocketFactory = webSocketFactory;
     }
 
+    Object getSyncRoot() {
+        return syncRoot;
+    }
+
     @SuppressWarnings("UnusedDeclaration")
-    public WsRestRequest newRequest(WsRestMethod method, String path) throws WsRestException {
+    public Request newRequest(String path, RequestType method) throws WsRestException {
         if (method == null) {
             throw new IllegalArgumentException("method");
         }
@@ -47,16 +51,25 @@ public class WsRestConnection {
             }
         }
 
-        return new WsRestRequest(this, method, path);
+        return new Request(this, method, path);
     }
 
-    void execute(WsRestMethod method, String path, String body, Callback<String> callback) throws WsRestException {
+    void execute(RequestType method, String path, String body, PendingRequest request) throws WsRestException {
         synchronized (syncRoot) {
             if (closed) {
                 throw new WsRestException("Connection closed");
             }
 
-            long id = nextId++;
+            execute(method, path, body, request, nextId++);
+        }
+    }
+
+    void execute(RequestType method, String path, String body, PendingRequest request, long id) throws WsRestException {
+        synchronized (syncRoot) {
+            if (closed) {
+                throw new WsRestException("Connection closed");
+            }
+
             StringBuilder sb = new StringBuilder();
 
             sb
@@ -79,17 +92,17 @@ public class WsRestConnection {
                         new WebSocketCallback() {
                             @Override
                             public void onClosed() {
-                                WsRestConnection.this.onClosed();
+                                Connection.this.onClosed();
                             }
 
                             @Override
                             public void onStringAvailable(String value) {
-                                WsRestConnection.this.onStringAvailable(value);
+                                Connection.this.onStringAvailable(value);
                             }
 
                             @Override
                             public void onError(Throwable e) {
-                                WsRestConnection.this.onError(e);
+                                Connection.this.onError(e);
                             }
                         }
                     );
@@ -98,11 +111,17 @@ public class WsRestConnection {
                 }
             }
 
+            if (request != null) {
+                pendingRequests.put(id, request);
+            }
+
             // Connection will not be closed while there are pending requests.
 
-            stopLingerTimer();
-
-            pendingRequests.put(id, callback);
+            if (pendingRequests.size() > 0) {
+                stopLingerTimer();
+            } else {
+                startLingerTimer();
+            }
 
             webSocket.sendText(sb.toString());
         }
@@ -141,22 +160,22 @@ public class WsRestConnection {
     }
 
     private void onClosed() {
-        List<Callback<String>> callbacks;
+        List<PendingRequest> requests;
 
         synchronized (syncRoot) {
             closeWebSocket();
 
-            callbacks = new ArrayList<>(pendingRequests.values());
+            requests = new ArrayList<>(pendingRequests.values());
             pendingRequests.clear();
         }
 
         WsRestException e = null;
 
-        for (Callback<String> callback : callbacks) {
+        for (PendingRequest request : requests) {
             if (e == null) {
                 e = new WsRestException("Connection closed unexpectedly");
             }
-            callback.call(null, e);
+            request.handleError(e);
         }
     }
 
@@ -181,8 +200,14 @@ public class WsRestConnection {
                 return;
             }
 
-            String response = parts[0];
+            ResponseType response;
             long id;
+            try {
+                response = ResponseType.valueOf(parts[0]);
+            } catch (IllegalArgumentException e) {
+                onError(new WsRestException("Protocol error", e));
+                return;
+            }
             try {
                 id = Long.parseLong(parts[1]);
             } catch (NumberFormatException e) {
@@ -190,50 +215,59 @@ public class WsRestConnection {
                 return;
             }
 
-            Callback<String> callback = pendingRequests.remove(id);
+            if (response == ResponseType.ERROR) {
+                PendingRequest request = pendingRequests.remove(id);
+
+                if (request == null) {
+                    onError(new WsRestException("Unknown stream ID"));
+                    return;
+                }
+
+                String message = "Server error";
+                if (body != null) {
+                    message += "\n" + body;
+                }
+
+                request.handleError(new WsRestException(message));
+            } else {
+                PendingRequest request = pendingRequests.get(id);
+
+                if (request == null) {
+                    onError(new WsRestException("Unknown stream ID"));
+                    return;
+                }
+
+                StreamState state;
+                try {
+                    state = request.handleRequest(response, id, body);
+                } catch (WsRestException e) {
+                    onError(e);
+                    return;
+                }
+
+                if (state == StreamState.CLOSED) {
+                    pendingRequests.remove(id);
+                }
+            }
 
             if (pendingRequests.size() == 0) {
                 startLingerTimer();
-            }
-
-            if (callback == null) {
-                onError(new WsRestException("Unknown stream ID"));
-                return;
-            }
-
-            switch (response) {
-                case "OK":
-                    callback.call(body, null);
-                    return;
-
-                case "ERROR":
-                    String message = "Server error";
-                    if (body != null) {
-                        message += "\n" + body;
-                    }
-
-                    callback.call(null, new WsRestException(message));
-                    break;
-
-                default:
-                    onError(new WsRestException("Unknown response type"));
-                    break;
             }
         }
     }
 
     private void onError(Throwable e) {
-        List<Callback<String>> callbacks;
+        List<PendingRequest> requests;
 
         synchronized (syncRoot) {
             closeWebSocket();
 
-            callbacks = new ArrayList<>(pendingRequests.values());
+            requests = new ArrayList<>(pendingRequests.values());
             pendingRequests.clear();
         }
 
-        for (Callback<String> callback : callbacks) {
-            callback.call(null, e);
+        for (PendingRequest request : requests) {
+            request.handleError(e);
         }
     }
 
@@ -255,5 +289,13 @@ public class WsRestConnection {
                 closed = true;
             }
         }
+    }
+
+    public void removeRequest(PendingStreamRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request");
+        }
+
+        this.pendingRequests.remove(request.getId());
     }
 }

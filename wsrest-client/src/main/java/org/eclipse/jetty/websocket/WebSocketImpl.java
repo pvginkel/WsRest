@@ -10,12 +10,13 @@ import org.webathome.wsrest.client.WebSocketCallback;
 import org.webathome.wsrest.client.WsRestException;
 
 import java.net.URI;
+import java.util.Deque;
 import java.util.LinkedList;
 
 class WebSocketImpl implements org.webathome.wsrest.client.WebSocket {
     private final Object syncRoot = new Object();
     private final Socket socket;
-    private final java.util.Deque<String> queue = new LinkedList<>();
+    private final Deque<String> queue = new LinkedList<>();
     private final WebSocketCallback callback;
     private WebSocketClient client;
     private boolean sending;

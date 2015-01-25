@@ -35,27 +35,30 @@ public class WsRestContext {
         threadPool.submit(new Runnable() {
             @Override
             public void run() {
-                Response response = execute(message);
+                Response response = executeAsync(message, session);
 
-                session.sendText(response.toString());
+                if (response != null) {
+                    session.sendText(response.toString());
+                }
             }
         });
     }
 
-    private Response execute(String message) {
+    private Response executeAsync(String message, BufferedSession session) {
         long id = -1;
 
         try {
             Request request = Request.parse(message);
             id = request.getId();
 
-            for (EndpointDescription endpoint : endpoints) {
-                if (request.getPath().startsWith(endpoint.getPath())) {
-                    return endpoint.execute(request);
-                }
-            }
+            switch (request.getType()) {
+                case MESSAGE:
+                case CLOSE:
+                    return executeStreamMessage(request, session);
 
-            throw new WsRestException("Cannot find endpoint", ErrorType.NOT_FOUND);
+                default:
+                    return executeNormalMessage(request, session);
+            }
         } catch (Throwable e) {
             String error;
 
@@ -75,6 +78,35 @@ public class WsRestContext {
                 error
             );
         }
+    }
+
+    private Response executeStreamMessage(Request request, BufferedSession session) throws WsRestException {
+        StreamImpl stream = session.getStream(request.getId());
+
+        if (request.getType() == RequestType.MESSAGE) {
+            if (stream == null) {
+                throw new WsRestException("Cannot find stream");
+            }
+
+            Stream.Callback callback = stream.getCallback();
+            if (callback != null) {
+                callback.onMessage(request.getBody());
+            }
+        } else if (stream != null) {
+            stream.close(false);
+        }
+
+        return null;
+    }
+
+    private Response executeNormalMessage(Request request, BufferedSession session) throws WsRestException {
+        for (EndpointDescription endpoint : endpoints) {
+            if (request.getPath().startsWith(endpoint.getPath())) {
+                return endpoint.execute(request, session);
+            }
+        }
+
+        throw new WsRestException("Cannot find endpoint", ErrorType.NOT_FOUND);
     }
 
     public static class Builder {

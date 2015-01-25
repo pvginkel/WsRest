@@ -6,15 +6,20 @@ import javax.websocket.SendHandler;
 import javax.websocket.SendResult;
 import javax.websocket.Session;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 
 class BufferedSession {
     private final Object syncRoot = new Object();
     private final Session session;
     private final Deque<String> queue = new LinkedList<>();
     private boolean sending;
+    private final Map<Long, StreamImpl> streams = new HashMap<>();
 
     public BufferedSession(Session session) {
+        Validate.notNull(session, "session");
+
         this.session = session;
     }
 
@@ -41,6 +46,28 @@ class BufferedSession {
                 onSendResult(pending, sendResult);
             }
         });
+    }
+
+    public void registerStream(StreamImpl stream) {
+        Validate.notNull(stream, "stream");
+
+        synchronized (syncRoot) {
+            streams.put(stream.getId(), stream);
+        }
+    }
+
+    public StreamImpl getStream(long id) {
+        synchronized (syncRoot) {
+            return streams.get(id);
+        }
+    }
+
+    public void removeStream(StreamImpl stream) {
+        Validate.notNull(stream, "stream");
+
+        synchronized (syncRoot) {
+            streams.remove(stream.getId());
+        }
     }
 
     private void onSendResult(String pending, SendResult sendResult) {
@@ -74,6 +101,23 @@ class BufferedSession {
                     // LOG.warn("Could not close existing session", e);
                 }
             }
+        }
+    }
+
+    public void close(Throwable e) {
+        synchronized (syncRoot) {
+            for (StreamImpl stream : streams.values()) {
+                if (e != null) {
+                    Stream.Callback callback = stream.getCallback();
+                    if (callback != null) {
+                        callback.onError(e);
+                    }
+                }
+
+                stream.close(false);
+            }
+
+            streams.clear();
         }
     }
 }

@@ -4,7 +4,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.webathome.wsrest.client.WsRestException;
-import org.webathome.wsrest.client.WsRestMethod;
+import org.webathome.wsrest.client.RequestType;
 import org.webathome.wsrest.test.support.WebUtil;
 
 import static org.junit.Assert.assertEquals;
@@ -19,8 +19,8 @@ public class RoundTripFixture extends FixtureBase {
     @Test
     public void simpleCall() throws WsRestException {
         String response = openConnection()
-            .newRequest(WsRestMethod.GET, "/rest/simple-ok")
-            .getTextResponse();
+            .newRequest("/rest/simple-ok", RequestType.GET)
+            .getText();
 
         assertEquals("OK", response);
     }
@@ -29,9 +29,10 @@ public class RoundTripFixture extends FixtureBase {
     public void echoGet() throws WsRestException {
         assertEquals(
             "GET OK",
-            openConnection().newRequest(WsRestMethod.GET, "/rest/echo")
+            openConnection()
+                .newRequest("/rest/echo", RequestType.GET)
                 .addQueryParam("value", "OK")
-                .getTextResponse()
+                .getText()
         );
     }
 
@@ -39,9 +40,10 @@ public class RoundTripFixture extends FixtureBase {
     public void echoPost() throws WsRestException {
         assertEquals(
             "POST OK",
-            openConnection().newRequest(WsRestMethod.POST, "/rest/echo")
+            openConnection()
+                .newRequest("/rest/echo", RequestType.POST)
                 .addFormParam("value", "OK")
-                .getTextResponse()
+                .getText()
         );
     }
 
@@ -49,9 +51,10 @@ public class RoundTripFixture extends FixtureBase {
     public void echoPut() throws WsRestException {
         assertEquals(
             "PUT OK",
-            openConnection().newRequest(WsRestMethod.PUT, "/rest/echo")
+            openConnection()
+                .newRequest("/rest/echo", RequestType.PUT)
                 .addFormParam("value", "OK")
-                .getTextResponse()
+                .getText()
         );
     }
 
@@ -59,9 +62,10 @@ public class RoundTripFixture extends FixtureBase {
     public void echoDelete() throws WsRestException {
         assertEquals(
             "DELETE OK",
-            openConnection().newRequest(WsRestMethod.DELETE, "/rest/echo")
+            openConnection()
+                .newRequest("/rest/echo", RequestType.DELETE)
                 .addQueryParam("value", "OK")
-                .getTextResponse()
+                .getText()
         );
     }
 
@@ -69,9 +73,10 @@ public class RoundTripFixture extends FixtureBase {
     public void echoPathParameter() throws WsRestException {
         assertEquals(
             "PATH OK",
-            openConnection().newRequest(WsRestMethod.GET, "/rest/echo/{value}")
+            openConnection()
+                .newRequest("/rest/echo/{value}", RequestType.GET)
                 .addPathParam("value", "OK")
-                .getTextResponse()
+                .getText()
         );
     }
 }

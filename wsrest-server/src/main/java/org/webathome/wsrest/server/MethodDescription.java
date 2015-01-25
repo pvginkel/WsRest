@@ -1,5 +1,7 @@
 package org.webathome.wsrest.server;
 
+import org.webathome.wsrest.server.annotations.STREAM;
+
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.lang.annotation.Annotation;
@@ -40,6 +42,8 @@ class MethodDescription {
                 type = RequestType.PUT;
             } else if (annotationType == DELETE.class) {
                 type = RequestType.DELETE;
+            } else if (annotationType == STREAM.class) {
+                type = RequestType.STREAM;
             } else if (annotationType == Path.class) {
                 path = ((Path)annotation).value();
             } else if (annotationType == Produces.class) {
@@ -69,16 +73,33 @@ class MethodDescription {
         Class<?>[] parameterTypes = method.getParameterTypes();
         Type[] genericParameterTypes = method.getGenericParameterTypes();
         Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+        boolean hadStream = false;
 
         for (int i = 0; i < parameterTypes.length; i++) {
-            parameters.add(new ParameterDescription(
+            ParameterDescription parameter = new ParameterDescription(
                 parameterAnnotations[i],
                 parameterTypes[i],
                 genericParameterTypes != null ? genericParameterTypes[i] : null,
                 "arg" + i,
                 ParameterSource.QUERY,
                 this.consumes
-            ));
+            );
+
+            if (parameter.getSource() == ParameterSource.STREAM) {
+                if (hadStream) {
+                    throw new WsRestException("Only one Stream parameter can be specified");
+                } else {
+                    hadStream = true;
+                    if (type != RequestType.STREAM) {
+                        throw new WsRestException("Stream methods must specify the STREAM annotation");
+                    }
+                    if (returnParameter.getParser() != null) {
+                        throw new WsRestException("Stream methods must have a void return type");
+                    }
+                }
+            }
+
+            parameters.add(parameter);
         }
 
         // Validate the parameters.

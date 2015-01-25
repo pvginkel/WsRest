@@ -29,25 +29,10 @@ class Request {
             throw new WsRestException("Invalid request", ErrorType.INVALID_REQUEST);
         }
 
-        switch (parts[0]) {
-            case "GET":
-                type = RequestType.GET;
-                break;
-
-            case "POST":
-                type = RequestType.POST;
-                break;
-
-            case "PUT":
-                type = RequestType.PUT;
-                break;
-
-            case "DELETE":
-                type = RequestType.DELETE;
-                break;
-
-            default:
-                throw new WsRestException("Invalid method " + parts[0], ErrorType.INVALID_REQUEST);
+        try {
+            type = RequestType.valueOf(parts[0]);
+        } catch (IllegalArgumentException e) {
+            throw new WsRestException("Invalid method " + parts[0], ErrorType.INVALID_REQUEST);
         }
 
         path = parts[1];

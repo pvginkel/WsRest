@@ -4,12 +4,13 @@ import com.koushikdutta.async.AndroidWebSocketFactory;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.webathome.wsrest.client.WsRestConnection;
+import org.webathome.wsrest.client.Connection;
 import org.webathome.wsrest.test.support.WebServer;
 
 public abstract class FixtureBase {
     private static WebServer server;
-    private WsRestConnection connection;
+    private static AndroidWebSocketFactory webSocketFactory = new AndroidWebSocketFactory();
+    private Connection connection;
 
     protected int getPort() {
         return server.getPort();
@@ -28,11 +29,20 @@ public abstract class FixtureBase {
         server.close();
     }
 
-    protected WsRestConnection openConnection() {
+    protected Connection openConnection() {
+        return openConnection(false);
+    }
+
+    protected Connection openConnection(boolean forceNew) {
+        if (forceNew && connection != null) {
+            connection.close();
+            connection = null;
+        }
+
         if (connection == null) {
-            connection = new WsRestConnection(
+            connection = new Connection(
                 String.format("ws://localhost:%d/ws", server.getPort()),
-                new AndroidWebSocketFactory()
+                webSocketFactory
             );
         }
 

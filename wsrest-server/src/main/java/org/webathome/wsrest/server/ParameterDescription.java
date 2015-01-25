@@ -16,8 +16,8 @@ class ParameterDescription {
         Validate.notNull(annotations, "annotations");
         Validate.notNull(type, "type");
 
-        String name = defaultName;
-        ParameterSource source = defaultSource;
+        String name = null;
+        ParameterSource source = null;
         String defaultValue = null;
 
         for (Annotation annotation : annotations) {
@@ -37,30 +37,47 @@ class ParameterDescription {
             }
         }
 
-        this.name = name;
-        this.source = source;
         this.defaultValue = defaultValue;
 
         ParameterParser parser = null;
 
-        switch (encoding) {
-            case TEXT:
-                parser = ParameterParser.textParser();
-                break;
+        if (type == Stream.class) {
+            if (name != null || defaultValue != null || source != null) {
+                throw new WsRestException("Stream parameters cannot have a name, default value or source");
+            }
 
-            case JSON:
-                parser = ParameterParser.jsonParser(type, genericType);
-                break;
+            source = ParameterSource.STREAM;
+        } else {
+            if (source == null) {
+                source = defaultSource;
+            }
+            if (name == null) {
+                name = defaultName;
+            }
 
-            case URL:
-                parser = ParameterParser.valueParser(type, genericType);
-                break;
+            if (source != ParameterSource.RESULT || type != Void.TYPE) {
+                switch (encoding) {
+                    case TEXT:
+                        parser = ParameterParser.textParser();
+                        break;
 
-            case XML:
-                parser = ParameterParser.xmlParser();
-                break;
+                    case JSON:
+                        parser = ParameterParser.jsonParser(type, genericType);
+                        break;
+
+                    case URL:
+                        parser = ParameterParser.valueParser(type, genericType);
+                        break;
+
+                    case XML:
+                        parser = ParameterParser.xmlParser();
+                        break;
+                }
+            }
         }
 
+        this.name = name;
+        this.source = source;
         this.parser = parser;
     }
 

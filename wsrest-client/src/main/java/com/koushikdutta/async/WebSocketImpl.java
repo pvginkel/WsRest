@@ -7,23 +7,29 @@ import com.koushikdutta.async.http.WebSocket;
 import org.webathome.wsrest.client.WebSocketCallback;
 
 import java.util.LinkedList;
+import java.util.concurrent.ThreadPoolExecutor;
 
 class WebSocketImpl implements org.webathome.wsrest.client.WebSocket {
     private final Object syncRoot = new Object();
+    private final ThreadPoolExecutor threadPool;
     private WebSocket session;
     private final java.util.Deque<String> queue = new LinkedList<>();
     private final WebSocketCallback callback;
     private boolean sending;
 
-    public WebSocketImpl(String url, WebSocketCallback callback) {
+    public WebSocketImpl(String url, WebSocketCallback callback, ThreadPoolExecutor threadPool) {
         if (url == null) {
             throw new IllegalArgumentException("url");
         }
         if (callback == null) {
             throw new IllegalArgumentException("callback");
         }
+        if (threadPool == null) {
+            throw new IllegalArgumentException("threadPool");
+        }
 
         this.callback = callback;
+        this.threadPool = threadPool;
 
         AsyncHttpClient.getDefaultInstance().websocket(url, null, new AsyncHttpClient.WebSocketConnectCallback() {
             @Override
@@ -50,8 +56,14 @@ class WebSocketImpl implements org.webathome.wsrest.client.WebSocket {
 
         this.session.setStringCallback(new WebSocket.StringCallback() {
             @Override
-            public void onStringAvailable(String s) {
-                callback.onStringAvailable(s);
+            public void onStringAvailable(final String s) {
+                threadPool.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onStringAvailable(s);
+                    }
+                });
+
             }
         });
 

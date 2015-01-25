@@ -13,7 +13,7 @@ public abstract class AbstractWsEndpoint {
 
     protected AbstractWsEndpoint(WsRestContext context) {
         Validate.notNull(context, "context");
-        
+
         this.context = context;
     }
 
@@ -26,20 +26,32 @@ public abstract class AbstractWsEndpoint {
 
     @OnClose
     public void onClose(Session session, CloseReason closeReason) {
+        BufferedSession bufferedSession;
+
         synchronized (syncRoot) {
-            sessions.remove(session);
+            bufferedSession = sessions.remove(session);
+        }
+
+        if (bufferedSession != null) {
+            bufferedSession.close(null);
         }
     }
 
     @OnError
-    public void onError(Session session, Throwable thr) {
+    public void onError(Session session, Throwable e) {
+        BufferedSession bufferedSession;
+
         synchronized (syncRoot) {
-            sessions.remove(session);
+            bufferedSession = sessions.remove(session);
+        }
+
+        if (bufferedSession != null) {
+            bufferedSession.close(e);
         }
     }
 
     @OnMessage
-    public void onMessage(Session session,  String message) {
+    public void onMessage(Session session, String message) {
         BufferedSession bufferedSession;
 
         synchronized (syncRoot) {

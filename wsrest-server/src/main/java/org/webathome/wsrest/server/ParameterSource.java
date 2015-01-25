@@ -4,5 +4,6 @@ enum ParameterSource {
     PATH,
     QUERY,
     FORM,
-    RESULT
+    RESULT,
+    STREAM
 }

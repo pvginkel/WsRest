@@ -18,6 +18,8 @@ class EndpointDescription {
     private final Class<?> klass;
     private final String path;
     private final List<MethodDescription> methods;
+    private final Object syncRoot = new Object();
+    private Object api;
 
     public EndpointDescription(Class<?> klass) throws WsRestException {
         Validate.notNull(klass, "klass");
@@ -64,7 +66,7 @@ class EndpointDescription {
         return path;
     }
 
-    public Response execute(Request request) throws WsRestException {
+    public Response execute(Request request, BufferedSession session) throws WsRestException {
         Validate.notNull(request, "request");
 
         String path = request.getPath();
@@ -132,6 +134,7 @@ class EndpointDescription {
 
         List<ParameterDescription> parameters = matchedMethod.getParameters();
         Object[] args = new Object[parameters.size()];
+        StreamImpl stream = null;
 
         // Fill in the path parameters.
 
@@ -158,6 +161,11 @@ class EndpointDescription {
                         value = request.getBody();
                     }
                     break;
+
+                case STREAM:
+                    stream = new StreamImpl(session, request.getId());
+                    args[i] = stream;
+                    continue;
             }
 
             args[i] = parameter.getParser().decode(value);
@@ -168,15 +176,28 @@ class EndpointDescription {
         Object result;
 
         try {
-            result = matchedMethod.getMethod().invoke(
-                klass.newInstance(),
-                args
-            );
+            Object api;
+
+            synchronized (syncRoot) {
+                if (this.api == null) {
+                    this.api = klass.newInstance();
+                }
+
+                api = this.api;
+            }
+
+            result = matchedMethod.getMethod().invoke(api, args);
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException e) {
             throw new WsRestException("Invoke method failed", e);
         }
 
-        Object encodedResult = matchedMethod.getReturnParameter().getParser().encode(result);
+        Object encodedResult = null;
+        ParameterParser returnParser = matchedMethod.getReturnParameter().getParser();
+
+        if (returnParser != null) {
+            encodedResult = returnParser.encode(result);
+        }
+
         String stringResult;
 
         if (encodedResult instanceof String[]) {
@@ -197,11 +218,25 @@ class EndpointDescription {
             stringResult = (String)encodedResult;
         }
 
-        return new Response(
-            ResponseType.OK,
-            request.getId(),
-            stringResult
-        );
+        if (stream != null) {
+            if (!stream.isClosed()) {
+                session.registerStream(stream);
+
+                return new Response(
+                    ResponseType.OPEN,
+                    request.getId(),
+                    null
+                );
+            } else {
+                return null;
+            }
+        } else {
+            return new Response(
+                ResponseType.OK,
+                request.getId(),
+                stringResult
+            );
+        }
     }
 
     private Map<String, Object> parseUrlEncoded(String input) {

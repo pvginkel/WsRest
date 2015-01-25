@@ -1,6 +1,6 @@
-package org.webathome.wsrest.server;
+package org.webathome.wsrest.client;
 
-enum RequestType {
+public enum RequestType {
     GET,
     POST,
     PUT,
