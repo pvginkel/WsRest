@@ -1,7 +1,5 @@
 package org.webathome.wsrest.client;
 
-import com.google.gson.Gson;
-
 import java.lang.reflect.Array;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -10,23 +8,24 @@ import java.util.Collection;
 import java.util.List;
 
 public abstract class ParameterParser {
-    public static ParameterParser valueParser(Class<?> type, Type genericType) throws WsRestException {
-        Class<?> itemType = null;
-        if (type.isArray()) {
-            itemType = type.getComponentType();
-        } else if (genericType != null) {
-            if (genericType instanceof ParameterizedType) {
-                Type[] typeArguments = ((ParameterizedType)genericType).getActualTypeArguments();
-                if (typeArguments != null && typeArguments.length == 1) {
-                    itemType = typeArguments[0].getClass();
-                }
-            }
-            if (itemType == null) {
+    public static ParameterParser valueParser(Type type) throws WsRestException {
+        Class<?> klass = null;
+        if (type instanceof Class<?>) {
+            klass = (Class<?>)type;
+        }
+
+        Class<?> itemType = klass;
+
+        if (klass != null && klass.isArray()) {
+            itemType = klass.getComponentType();
+        } else if (type instanceof ParameterizedType) {
+            Type[] typeArguments = ((ParameterizedType)type).getActualTypeArguments();
+
+            if (typeArguments != null && typeArguments.length == 1) {
+                itemType = typeArguments[0].getClass();
+            } else {
                 throw new WsRestException("Cannot determine parameter type");
             }
-        } else {
-            itemType = type;
-            type = null;
         }
 
         ItemParser itemParser;
@@ -65,18 +64,14 @@ public abstract class ParameterParser {
             throw new WsRestException(String.format("Cannot parse %s", itemType.getName()));
         }
 
-        if (type == null) {
-            return new SingleItemParser(itemParser);
-        }
-
-        if (type.isArray()) {
+        if (klass != null && klass.isArray()) {
             return new ArrayParser(itemParser, itemType);
         }
         if (type == ArrayList.class || type == List.class || type == Collection.class) {
             return new ArrayListParser(itemParser);
         }
 
-        throw new WsRestException(String.format("Cannot create parser for %s", type.getName()));
+        return new SingleItemParser(itemParser);
     }
 
     public abstract Object encode(Object value) throws WsRestException;
@@ -425,35 +420,6 @@ public abstract class ParameterParser {
         @Override
         public Object decode(String value) throws WsRestException {
             return value;
-        }
-    }
-
-    private static class JsonParser extends ParameterParser {
-        private static final Gson GSON = new Gson();
-        private final Class<?> type;
-        private final Type genericType;
-
-        public JsonParser(Class<?> type, Type genericType) {
-            this.type = type;
-            this.genericType = genericType;
-        }
-
-        @Override
-        public Object encode(Object value) throws WsRestException {
-            return GSON.toJson(value, genericType);
-        }
-
-        @Override
-        public Object decode(Object value) throws WsRestException {
-            if (value == null) {
-                return null;
-            }
-
-            if (genericType != null) {
-                return GSON.fromJson((String)value, genericType);
-            }
-
-            return GSON.fromJson((String)value, type);
         }
     }
 }

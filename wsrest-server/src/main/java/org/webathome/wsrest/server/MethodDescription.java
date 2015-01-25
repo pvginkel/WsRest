@@ -62,7 +62,6 @@ class MethodDescription {
         this.path = path;
         this.returnParameter = new ParameterDescription(
             new Annotation[0],
-            method.getReturnType(),
             method.getGenericReturnType(),
             "result",
             ParameterSource.RESULT,
@@ -70,8 +69,7 @@ class MethodDescription {
         );
 
         List<ParameterDescription> parameters = new ArrayList<>();
-        Class<?>[] parameterTypes = method.getParameterTypes();
-        Type[] genericParameterTypes = method.getGenericParameterTypes();
+        Type[] parameterTypes = method.getGenericParameterTypes();
         Annotation[][] parameterAnnotations = method.getParameterAnnotations();
         boolean hadStream = false;
 
@@ -79,7 +77,6 @@ class MethodDescription {
             ParameterDescription parameter = new ParameterDescription(
                 parameterAnnotations[i],
                 parameterTypes[i],
-                genericParameterTypes != null ? genericParameterTypes[i] : null,
                 "arg" + i,
                 ParameterSource.QUERY,
                 this.consumes

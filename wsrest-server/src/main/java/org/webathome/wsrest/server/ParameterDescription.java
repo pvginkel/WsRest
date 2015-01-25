@@ -12,7 +12,7 @@ class ParameterDescription {
     private final String defaultValue;
     private final ParameterParser parser;
 
-    public ParameterDescription(Annotation[] annotations, Class<?> type, Type genericType, String defaultName, ParameterSource defaultSource, ParameterEncoding encoding) throws WsRestException {
+    public ParameterDescription(Annotation[] annotations, Type type, String defaultName, ParameterSource defaultSource, ParameterEncoding encoding) throws WsRestException {
         Validate.notNull(annotations, "annotations");
         Validate.notNull(type, "type");
 
@@ -62,11 +62,11 @@ class ParameterDescription {
                         break;
 
                     case JSON:
-                        parser = ParameterParser.jsonParser(type, genericType);
+                        parser = ParameterParser.jsonParser(type);
                         break;
 
                     case URL:
-                        parser = ParameterParser.valueParser(type, genericType);
+                        parser = ParameterParser.valueParser(type);
                         break;
 
                     case XML:

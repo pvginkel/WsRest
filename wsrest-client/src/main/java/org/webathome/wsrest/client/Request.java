@@ -29,7 +29,7 @@ public class Request {
             return EMPTY_STRING_ARRAY;
         }
 
-        Object encoded = ParameterParser.valueParser(value.getClass(), null).encode(value);
+        Object encoded = ParameterParser.valueParser(value.getClass()).encode(value);
         if (encoded instanceof String) {
             return new String[]{(String)encoded};
         }
@@ -182,7 +182,7 @@ public class Request {
             throw new IllegalArgumentException("type");
         }
 
-        return (T)ParameterParser.valueParser(type, null).decode(getText());
+        return (T)ParameterParser.valueParser(type).decode(getText());
     }
 
     public <T> void getResponse(final Class<? extends T> type, final Callback<T> callback) throws WsRestException {
@@ -200,7 +200,7 @@ public class Request {
                 T result = null;
                 if (value != null) {
                     try {
-                        result = (T)ParameterParser.valueParser(type, null).decode(value);
+                        result = (T)ParameterParser.valueParser(type).decode(value);
                     } catch (WsRestException e1) {
                         e = e1;
                     }
