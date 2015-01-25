@@ -90,6 +90,11 @@ public class SerializationFixture extends FixtureBase {
     }
 
     @Test
+    public void echoEnum() throws WsRestException {
+        test("enum", MyEnum.B);
+    }
+
+    @Test
     public void echoIntArray() throws WsRestException {
 
         assertEquals(

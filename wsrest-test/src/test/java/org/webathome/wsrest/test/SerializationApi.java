@@ -179,4 +179,12 @@ public class SerializationApi {
     ) {
         return object;
     }
+
+    @GET
+    @Path("/echo-enum")
+    public MyEnum echoEnum(
+        @QueryParam("value") MyEnum value
+    ) {
+        return value;
+    }
 }

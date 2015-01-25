@@ -30,7 +30,9 @@ public abstract class ParameterParser {
 
         ItemParser itemParser;
 
-        if (itemType == Character.TYPE) {
+        if (itemType.isEnum()) {
+            itemParser = new EnumParser((Class<? extends Enum>)itemType);
+        } else if (itemType == Character.TYPE) {
             itemParser = new CharacterParser(false);
         } else if (itemType == Character.class) {
             itemParser = new CharacterParser(true);
@@ -420,6 +422,32 @@ public abstract class ParameterParser {
         @Override
         public Object decode(String value) throws WsRestException {
             return value;
+        }
+    }
+
+    private static class EnumParser extends ItemParser {
+        private final Class<? extends Enum> type;
+
+        public EnumParser(Class<? extends Enum> type) {
+            this.type = type;
+        }
+
+        @Override
+        public String encode(Object value) throws WsRestException {
+            if (value == null) {
+                return null;
+            }
+
+            return value.toString();
+        }
+
+        @Override
+        public Object decode(String value) throws WsRestException {
+            if (value == null) {
+                return null;
+            }
+
+            return Enum.valueOf(type, value);
         }
     }
 }
