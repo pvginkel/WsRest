@@ -186,7 +186,12 @@ class EndpointDescription {
                 api = this.api;
             }
 
-            result = matchedMethod.getMethod().invoke(api, args);
+            RequestContext.setCurrent(session.getRequestContext());
+            try {
+                result = matchedMethod.getMethod().invoke(api, args);
+            } finally {
+                RequestContext.setCurrent(null);
+            }
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException e) {
             throw new WsRestException("Invoke method failed", e);
         }

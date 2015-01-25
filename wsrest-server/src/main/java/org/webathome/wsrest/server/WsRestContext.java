@@ -15,8 +15,9 @@ public class WsRestContext {
 
     private final List<EndpointDescription> endpoints = new ArrayList<>();
     private final ExecutorService threadPool;
+    private final RequestContextFactory requestContextFactory;
 
-    private WsRestContext(List<Class<?>> services, ExecutorService threadPool) throws WsRestException {
+    private WsRestContext(List<Class<?>> services, ExecutorService threadPool, RequestContextFactory requestContextFactory) throws WsRestException {
         for (Class<?> service : services) {
             endpoints.add(new EndpointDescription(service));
         }
@@ -26,6 +27,11 @@ public class WsRestContext {
         }
 
         this.threadPool = threadPool;
+        this.requestContextFactory = requestContextFactory;
+    }
+
+    RequestContextFactory getRequestContextFactory() {
+        return requestContextFactory;
     }
 
     void execute(final String message, final BufferedSession session) {
@@ -112,6 +118,7 @@ public class WsRestContext {
     public static class Builder {
         private final List<Class<?>> services = new ArrayList<>();
         private ExecutorService threadPool;
+        private RequestContextFactory requestContextFactory;
 
         public Builder addService(Class<?> service) {
             Validate.notNull(service, "service");
@@ -126,8 +133,13 @@ public class WsRestContext {
             return this;
         }
 
+        public Builder setRequestContextFactory(RequestContextFactory requestContextFactory) {
+            this.requestContextFactory = requestContextFactory;
+            return this;
+        }
+
         public WsRestContext build() throws WsRestException {
-            return new WsRestContext(services, threadPool);
+            return new WsRestContext(services, threadPool, requestContextFactory);
         }
     }
 }

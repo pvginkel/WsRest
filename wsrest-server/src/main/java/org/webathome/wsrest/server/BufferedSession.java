@@ -16,11 +16,17 @@ class BufferedSession {
     private final Deque<String> queue = new LinkedList<>();
     private boolean sending;
     private final Map<Long, StreamImpl> streams = new HashMap<>();
+    private final RequestContext requestContext;
 
-    public BufferedSession(Session session) {
+    public BufferedSession(Session session, RequestContext requestContext) {
         Validate.notNull(session, "session");
 
         this.session = session;
+        this.requestContext = requestContext;
+    }
+
+    public RequestContext getRequestContext() {
+        return requestContext;
     }
 
     public void sendText(String text) {

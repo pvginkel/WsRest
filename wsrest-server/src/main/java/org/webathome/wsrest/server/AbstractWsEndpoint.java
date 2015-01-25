@@ -20,7 +20,15 @@ public abstract class AbstractWsEndpoint {
     @OnOpen
     public void onOpen(Session session) {
         synchronized (syncRoot) {
-            sessions.put(session, new BufferedSession(session));
+            RequestContext requestContext = null;
+            if (context.getRequestContextFactory() != null) {
+                requestContext = context.getRequestContextFactory().createContext(session);
+                if (!session.isOpen()) {
+                    return;
+                }
+            }
+
+            sessions.put(session, new BufferedSession(session, requestContext));
         }
     }
 
